@@ -1,0 +1,4 @@
+transformers==4.31.0
+pandas
+scikit-learn
+matplotlib
