@@ -5,7 +5,11 @@ from torch.utils.data import TensorDataset, DataLoader, RandomSampler
 
 def clean_data(raw_data, tokens):
 
+    # flatten the raw data and split each row based on '\n' symbol
     data = [elem for d in raw_data.values() for elem in d.split("\n")]
+
+    # remove token symbols and create a df
+    # where each column is a feature (based on the tokens dictionary)
     rows = []
     for obs in data:
         row = {}
@@ -16,8 +20,11 @@ def clean_data(raw_data, tokens):
                     row[key] = part.replace(tag, '')
                     break
         rows.append(row)
+    df = pd.DataFrame(rows, columns=tokens.keys())
 
-    return pd.DataFrame(rows, columns=tokens.keys())
+    # drop missing values
+    df = df.dropna(how='all')
+    return df
 
 
 def get_features(data, target_name: str = "surname_household"):
@@ -33,6 +40,10 @@ def get_features(data, target_name: str = "surname_household"):
 
 
 def get_dataloader(X_sample, y_sample, tokenizer, batch_size: int):
+    """
+    Create a DataLoader for training or evaluation,
+    wrapping the data and the tokenizer with specified batch size.
+    """
     X_tokenized = tokenizer(
         list(X_sample),
         padding=True,
