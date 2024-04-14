@@ -2,6 +2,32 @@
 import time
 from tqdm import tqdm
 import torch
+import os
+import logging
+import json
+
+from src.utils import get_data, update_json
+from src.preprocessing import get_dataloader
+from src.evaluation import plot_losses, plot_confusion_matrix, predict, make_classif_report
+
+
+def save_model(model_name, finetuned_model, patience, epochs, training_info, es):
+    # specify whether there is early stopping or not
+    es_suffix = "" if not es else "_es"
+    file_name = "model" + es_suffix + ".pth"
+
+    directory = os.path.join("data", "outputs", model_name)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    file_path = os.path.join(directory, file_name)
+    torch.save(finetuned_model.state_dict(), file_path)
+    with open(
+        os.path.join(directory, 'training_summary' + es_suffix + '.json'), 'w'
+    ) as f:
+        json.dump(training_info, f, indent=4)
+
+    logging.info(f"Model saved successfully to {file_path}")
 
 
 def train_one_epoch(model, dataloader, optimizer, device):
@@ -50,14 +76,26 @@ def validate(model, dataloader, device):
     return avg_loss, accuracy
 
 
-def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, device, epochs):
+def train_and_evaluate(
+    model,
+    train_dataloader,
+    val_dataloader,
+    optimizer,
+    device,
+    epochs,
+    patience,
+    model_name,
+    es
+):
     train_losses = []
     val_losses = []
     val_accuracies = []
-    start = time.time()
+    best_val_loss = float('inf')
+    early_stopping_counter = 0
 
-    for epoch_i in range(epochs):
-        print(f'======== Epoch {epoch_i + 1} / {epochs} ========')
+    start_time = time.time()
+    for epoch in range(epochs):
+        print(f'======== Epoch {epoch + 1} / {epochs} ========')
 
         avg_train_loss = train_one_epoch(model, train_dataloader, optimizer, device)
         train_losses.append(avg_train_loss)
@@ -71,5 +109,78 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, devic
         print(f"Validation Loss: {avg_val_loss:.2f}")
         print(f"Validation Accuracy: {accuracy:.2f}")
 
-    print(f"Training time (seconds): {round(time.time() - start, 2)}")
+        # use early stopping or not
+        if es:
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                best_model_info = {
+                    'state_dict': model.state_dict(),
+                    'train_time': time.time() - start_time,
+                    'epoch': epoch + 1
+                }
+                early_stopping_counter = 0
+            else:
+                early_stopping_counter += 1
+                print(f"No improvement in validation loss for {early_stopping_counter} epoch(s).")
+
+            if early_stopping_counter >= patience:
+                print("Stopping early due to no improvement in validation loss.")
+                break
+        else:
+            best_model_info = {}
+
+    total_training_time = round(time.time() - start_time, 2)
+    print(f"Total training time: {total_training_time:.2f} seconds.")
+
+    training_info = {
+        'best_model_epoch': best_model_info.get('epoch', epochs),
+        'best_model_train_time': best_model_info.get('train_time', total_training_time),
+        'total_training_time': total_training_time,
+    }
+    save_model(model_name, model, patience, epochs, training_info, es)
     return train_losses, val_losses, val_accuracies
+
+
+def run_finetuning(
+    tokenizer, model, model_name, params,
+    X_train, X_val, y_train, y_val,
+    es, device
+):
+    optimizer = torch.optim.AdamW(model.parameters(), lr=params["lr"])
+
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Number of parameters to be learned: {n_params}")
+
+    train_dataloader = get_dataloader(
+        X_train, y_train, tokenizer, batch_size=params["batch_size"]
+        )
+    val_dataloader = get_dataloader(
+        X_val, y_val, tokenizer, batch_size=params["batch_size"]
+        )
+    train_losses, val_losses, val_accuracies = train_and_evaluate(
+        model, train_dataloader, val_dataloader, optimizer, device, params['epochs'],
+        params['patience'], model_name, es
+        )
+
+    es_suffix = "_es" if es else ""
+    stop = get_data(
+        os.path.join("data", "outputs", model_name, 'training_summary_es.json')
+        )["epoch"] if es else None
+    _ = plot_losses(
+        train_losses, val_losses, stop=stop, save_path=model_name + es_suffix
+        )
+
+    start_time = time.time()
+    true_labels, predictions = predict(model, val_dataloader, device)
+    inference_time = round(time.time() - start_time, 2)
+    print("Inference time: ", inference_time)
+
+    update_json(os.path.join(
+        "data", "outputs", model_name, "training_summary" + es_suffix + ".json"
+        ), 'inference_time', inference_time)
+
+    _ = plot_confusion_matrix(true_labels, predictions, model_name + es_suffix)
+    make_classif_report(
+        true_labels, predictions,
+        os.path.join("data", "outputs", model_name, "classif_report" + es_suffix + ".json")
+    )
