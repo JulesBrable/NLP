@@ -165,7 +165,7 @@ def run_finetuning(
     es_suffix = "_es" if es else ""
     stop = get_data(
         os.path.join("data", "outputs", model_name, 'training_summary_es.json')
-        )["epoch"] if es else None
+        )["best_model_epoch"] if es else None
     _ = plot_losses(
         train_losses, val_losses, stop=stop, save_path=model_name + es_suffix
         )
