@@ -19,7 +19,8 @@ def plot_missings(missings, rotate_xticks=45, directory: str = "assets/plots/des
     plt.show()
 
 
-def plot_ages(data, directory: str = "assets/plots/descriptives"):
+def plot_ages(df, directory: str = "assets/plots/descriptives"):
+    data = df.copy()
     data["age_cleaned"] = pd.to_numeric(data['age'].str[:2], errors='coerce')
 
     overall_mean_age = round(data['age_cleaned'].median(), 2)
