@@ -11,7 +11,7 @@ from src.preprocessing import get_dataloader
 from src.evaluation import plot_losses, plot_confusion_matrix, predict, make_classif_report
 
 
-def save_model(model_name, finetuned_model, patience, epochs, training_info, es):
+def save_model(model_name, finetuned_model_state_dict, patience, epochs, training_info, es):
     # specify whether there is early stopping or not
     es_suffix = "" if not es else "_es"
     file_name = "model" + es_suffix + ".pth"
@@ -21,7 +21,7 @@ def save_model(model_name, finetuned_model, patience, epochs, training_info, es)
         os.makedirs(directory)
 
     file_path = os.path.join(directory, file_name)
-    torch.save(finetuned_model.state_dict(), file_path)
+    torch.save(finetuned_model_state_dict, file_path)
     with open(
         os.path.join(directory, 'training_summary' + es_suffix + '.json'), 'w'
     ) as f:
@@ -127,7 +127,7 @@ def train_and_evaluate(
                 print("Stopping early due to no improvement in validation loss.")
                 break
         else:
-            best_model_info = {}
+            best_model_info = {'state_dict': model.state_dict()}
 
     total_training_time = round(time.time() - start_time, 2)
     print(f"Total training time: {total_training_time:.2f} seconds.")
@@ -137,7 +137,7 @@ def train_and_evaluate(
         'best_model_train_time': best_model_info.get('train_time', total_training_time),
         'total_training_time': total_training_time,
     }
-    save_model(model_name, model, patience, epochs, training_info, es)
+    save_model(model_name, best_model_info['state_dict'], patience, epochs, training_info, es)
     return train_losses, val_losses, val_accuracies
 
 
