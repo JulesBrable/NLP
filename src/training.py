@@ -7,7 +7,6 @@ import logging
 import json
 
 from src.utils import get_data, update_json
-from src.preprocessing import get_dataloader
 from src.evaluation import plot_losses, plot_confusion_matrix, predict, make_classif_report
 
 
@@ -143,7 +142,7 @@ def train_and_evaluate(
 
 def run_finetuning(
     tokenizer, model, model_name, params,
-    X_train, X_val, y_train, y_val,
+    train_dataloader, val_dataloader, test_dataloader,
     es, device
 ):
     optimizer = torch.optim.AdamW(model.parameters(), lr=params["lr"])
@@ -151,12 +150,6 @@ def run_finetuning(
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Number of parameters to be learned: {n_params}")
 
-    train_dataloader = get_dataloader(
-        X_train, y_train, tokenizer, batch_size=params["batch_size"]
-        )
-    val_dataloader = get_dataloader(
-        X_val, y_val, tokenizer, batch_size=params["batch_size"]
-        )
     train_losses, val_losses, val_accuracies = train_and_evaluate(
         model, train_dataloader, val_dataloader, optimizer, device, params['epochs'],
         params['patience'], model_name, es
@@ -171,7 +164,7 @@ def run_finetuning(
         )
 
     start_time = time.time()
-    true_labels, predictions = predict(model, val_dataloader, device)
+    true_labels, predictions = predict(model, test_dataloader, device)
     inference_time = round(time.time() - start_time, 2)
     print("Inference time: ", inference_time)
 

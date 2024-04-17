@@ -1,5 +1,6 @@
 import pandas as pd
 import torch
+from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler
 
 
@@ -23,7 +24,7 @@ def clean_data(raw_data, tokens):
     df = pd.DataFrame(rows, columns=tokens.keys())
 
     # drop missing values
-    df = df.dropna(how='all')
+    df = df.dropna(how='all').reset_index(drop=True)
     return df
 
 
@@ -37,6 +38,18 @@ def get_features(data, target_name: str = "surname_household"):
         .to_numpy(dtype=str)
     )
     return X, y
+
+
+def split_data(X, y, params):
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=params['test_size'], stratify=y, random_state=params['seed']
+    )
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train, y_train,
+        test_size=params['test_size'], stratify=y_train, random_state=params['seed']
+    )
+    return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 def get_dataloader(X_sample, y_sample, tokenizer, batch_size: int):
