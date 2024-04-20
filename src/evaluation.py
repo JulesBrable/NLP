@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
 import torch
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from sklearn.metrics import classification_report
+import sklearn.metrics as m
 from typing import Union
 import os
 import json
+
+from src.utils import update_json
 
 
 def plot_losses(
@@ -33,7 +34,7 @@ def plot_losses(
 
 def predict(model, dataloader, device):
     model.eval()
-    predictions, true_labels = [], []
+    probabilities, predictions, true_labels = [], [], []
 
     for batch in dataloader:
         b_input_ids, b_input_mask, b_labels = (
@@ -43,11 +44,13 @@ def predict(model, dataloader, device):
         with torch.no_grad():
             outputs = model(b_input_ids, attention_mask=b_input_mask)
             logits = outputs.logits
+            probas = torch.softmax(logits, dim=-1)
 
         preds = torch.argmax(logits, dim=1)
+        probabilities.extend(probas[:, 1].cpu().numpy())
         predictions.extend(preds.cpu().numpy())
         true_labels.extend(b_labels.cpu().numpy())
-    return true_labels, predictions
+    return true_labels, predictions, probabilities
 
 
 def plot_confusion_matrix(
@@ -59,9 +62,9 @@ def plot_confusion_matrix(
     if not os.path.exists(save_prefix):
         os.makedirs(save_prefix)
 
-    cm = confusion_matrix(true_labels, predictions)
+    cm = m.confusion_matrix(true_labels, predictions)
     fig, ax = plt.subplots(figsize=(8, 6))
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp = m.ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(ax=ax, cmap=plt.cm.Blues)
     ax.set_title(f'Confusion Matrix for {save_path.split("/")[-1]}')
 
@@ -71,6 +74,28 @@ def plot_confusion_matrix(
 
 
 def make_classif_report(y_true, y_pred, filepath):
-    report = classification_report(y_true, y_pred, output_dict=True)
+    report = m.classification_report(y_true, y_pred, output_dict=True)
     with open(filepath, 'w') as file:
         json.dump(report, file, indent=4)
+
+
+def make_full_report(
+    true_labels, predictions, probabilities,
+    model_name, inference_time, es_suffix
+):
+    metrics_dict = {
+        'inference_time': inference_time,
+        'test_accuracy': m.accuracy_score(true_labels, predictions),
+        'test_f1': m.f1_score(true_labels, predictions),
+        'test_roc_auc': m.roc_auc_score(true_labels, probabilities)
+    }
+
+    for k, v in metrics_dict.items():
+        update_json(os.path.join(
+            "data", "outputs", model_name, "training_summary" + es_suffix + ".json"
+            ), k, v)
+
+    make_classif_report(
+        true_labels, predictions,
+        os.path.join("data", "outputs", model_name, "classif_report" + es_suffix + ".json")
+    )

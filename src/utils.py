@@ -2,6 +2,8 @@ import yaml
 import json
 import pandas as pd
 import argparse
+import re
+import numpy as np
 
 
 def get_params(
@@ -48,3 +50,26 @@ def update_json(json_file, key, value):
     j[key] = value
     with open(json_file, 'w') as f:
         json.dump(j, f, indent=4)
+
+
+def filter_one_age(age):
+    if isinstance(age, str):
+        if re.match(r"^[0-9]+$", age):
+            return int(age)
+        else:
+            return np.nan
+    else:
+        try:
+            return int(age)
+        except ValueError:
+            return np.nan
+
+
+def display_results(results):
+    for label, metrics in results.items():
+        if isinstance(metrics, dict):
+            print(f"Class {label}:")
+            for metric_name, metric_value in metrics.items():
+                print(f"  {metric_name.capitalize()}: {metric_value:.2f}")
+        else:
+            print(f"{label.capitalize()}: {metrics:.2f}")

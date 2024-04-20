@@ -6,8 +6,8 @@ import os
 import logging
 import json
 
-from src.utils import get_data, update_json
-from src.evaluation import plot_losses, plot_confusion_matrix, predict, make_classif_report
+from src.utils import get_data
+from src.evaluation import plot_losses, plot_confusion_matrix, predict, make_full_report
 
 
 def save_model(model_name, finetuned_model_state_dict, patience, epochs, training_info, es):
@@ -159,21 +159,18 @@ def run_finetuning(
     stop = get_data(
         os.path.join("data", "outputs", model_name, 'training_summary_es.json')
         )["best_model_epoch"] if es else None
-    _ = plot_losses(
-        train_losses, val_losses, stop=stop, save_path=model_name + es_suffix
-        )
 
     start_time = time.time()
-    true_labels, predictions = predict(model, test_dataloader, device)
+    true_labels, predictions, probabilities = predict(model, test_dataloader, device)
     inference_time = round(time.time() - start_time, 2)
     print("Inference time: ", inference_time)
 
-    update_json(os.path.join(
-        "data", "outputs", model_name, "training_summary" + es_suffix + ".json"
-        ), 'inference_time', inference_time)
-
+    _ = plot_losses(
+        train_losses, val_losses, stop=stop, save_path=model_name + es_suffix
+        )
     _ = plot_confusion_matrix(true_labels, predictions, model_name + es_suffix)
-    make_classif_report(
-        true_labels, predictions,
-        os.path.join("data", "outputs", model_name, "classif_report" + es_suffix + ".json")
+
+    make_full_report(
+        true_labels, predictions, probabilities,
+        model_name, inference_time, es_suffix
     )
