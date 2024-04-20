@@ -1,7 +1,8 @@
+import time
 from sklearn.model_selection import GridSearchCV
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, f1_score, roc_auc_score
 
 
 def make_grid():
@@ -34,7 +35,12 @@ def perform_grid_search(X_train, y_train, param_grid):
 
 
 def evaluate_model(model, X_test, y_test):
+    start_time = time.time()
     y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
+    print("Inference time: ", round(time.time() - start_time, 2))
     report = classification_report(y_test, y_pred)
-    return accuracy, report
+    print("Accuracy on Test Set:", accuracy_score(y_test, y_pred))
+    print("F1 Score on Test Set:", f1_score(y_test, y_pred))
+    print("ROC-AUC on Test Set:", roc_auc_score(y_test, y_pred))
+    print("Classification Report:\n", report)
+    return
