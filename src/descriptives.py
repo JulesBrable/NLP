@@ -54,3 +54,18 @@ def plot_wordcloud(df, string_column: str, directory: str = "assets/plots/descri
     plt.axis("off")
     plt.show()
     wordcloud.to_file(os.path.join(directory, "wordcloud.png"))
+
+
+def plot_sentence_len(X, directory: str = "assets/plots/descriptives"):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    plot_df = pd.DataFrame(X, columns=["sentences"])
+    plot_df["len_utt"] = plot_df["sentences"].apply(lambda x: len(x))
+
+    ax = plot_df["len_utt"].hist(density=True, bins=50)
+    ax.set_xlabel("Longueur")
+    ax.set_ylabel("Fréquence")
+    ax.set_title("")
+
+    plt.savefig(os.path.join(directory, "length.png"))
+    plt.show()
