@@ -10,8 +10,6 @@ Repository for the final project of the NLP course (2nd Semester, final year, EN
 
 _**Note 1:** this repository does not contain the final report associated to this study (in which we present more in depth both theoretical and empirical aspects of our work). If you are interested in having a look to this paper, you can ask this paper directly to the author (me)._
 
-_**Note 2:** this repository does not contain the data associated to this study. Indeed,for securioty reasons, I added the data to a S3 bucket, accessible to the SSP Cloud's solution (MinIO). Hence, in the code, I directly use the data that is stored in my personal bucket._
-
 ## Setup Instructions
 
 From the command line, you will have to follow the following steps to set this project up:
