@@ -8,7 +8,7 @@ Repository for the final project of the NLP course (2nd Semester, final year, EN
 * `analysis.ipynb` is a notebook that briefly shows how to do the descriptive analysis and use the pretrained models that are described in my paper. This notebook contains 4 main sections : Setup, Descriptive statistics, Experiments and Inference.
 * `src` folder contained 7 modules that handle data extraction, visualization, preprocessing, model construction, training, inference and evaluation.
 
-_**Note 1:** this repository does not contain the final report associated to this study (in which we present more in depth both theoretical and empirical aspects of our work). If you are interested in having a look to this paper, you can ask this paper directly to the author (me)._
+_**Note:** this repository does not contain the final report associated to this study (in which we present more in depth both theoretical and empirical aspects of our work). If you are interested in having a look to this paper, you can ask this paper directly to the author (me)._
 
 ## Setup Instructions
 
